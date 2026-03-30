@@ -1,0 +1,1890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LogWatch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0c0f;
+    --bg2: #0f1217;
+    --bg3: #151a21;
+    --bg4: #1c2330;
+    --border: rgba(255,255,255,0.06);
+    --border2: rgba(255,255,255,0.10);
+    --text: #e8eaf0;
+    --muted: #6b7a90;
+    --muted2: #4a5568;
+    --green: #22d98a;
+    --green-dim: rgba(34,217,138,0.12);
+    --red: #ff5c6a;
+    --red-dim: rgba(255,92,106,0.12);
+    --amber: #f5a623;
+    --amber-dim: rgba(245,166,35,0.12);
+    --blue: #4f9cf9;
+    --blue-dim: rgba(79,156,249,0.12);
+    --accent: #22d98a;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* TOPBAR */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 56px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: -0.3px;
+    color: var(--text);
+  }
+
+  .logo-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: var(--green-dim);
+    border: 1px solid rgba(34,217,138,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .logo-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .logo span.dim { color: var(--muted); font-weight: 400; }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-family: var(--mono);
+    font-weight: 500;
+    border: 1px solid;
+    cursor: default;
+  }
+
+  .status-pill.connected {
+    color: var(--green);
+    border-color: rgba(34,217,138,0.3);
+    background: var(--green-dim);
+  }
+
+  .status-pill.disconnected {
+    color: var(--muted);
+    border-color: var(--border);
+    background: transparent;
+  }
+
+  .status-pill.verifying {
+    color: var(--amber);
+    border-color: rgba(245,166,35,0.3);
+    background: var(--amber-dim);
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .status-pill.connected .status-dot { animation: pulse 1.5s infinite; }
+
+  .btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-family: var(--sans);
+    font-weight: 500;
+    border: 1px solid var(--border2);
+    background: var(--bg3);
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .btn:hover { background: var(--bg4); border-color: rgba(255,255,255,0.15); }
+  .btn:active { transform: scale(0.98); }
+
+  .btn.primary {
+    background: var(--green);
+    color: #0a0c0f;
+    border-color: transparent;
+    font-weight: 600;
+  }
+  .btn.primary:hover { background: #1bc47a; }
+
+  .btn.danger {
+    background: var(--red-dim);
+    color: var(--red);
+    border-color: rgba(255,92,106,0.2);
+  }
+
+  /* LAYOUT */
+  .shell {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: calc(100vh - 56px);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .sidebar-section {
+    padding: 0 16px;
+    margin-bottom: 4px;
+  }
+
+  .sidebar-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--muted2);
+    padding: 6px 8px 4px;
+    font-family: var(--mono);
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 13.5px;
+    font-weight: 400;
+    transition: background 0.12s, color 0.12s;
+    user-select: none;
+  }
+
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active { background: var(--bg4); color: var(--text); }
+  .nav-item.active .nav-icon { color: var(--green); }
+
+  .nav-icon {
+    width: 16px;
+    text-align: center;
+    font-size: 14px;
+  }
+
+  .nav-badge {
+    margin-left: auto;
+    background: var(--red-dim);
+    color: var(--red);
+    border: 1px solid rgba(255,92,106,0.2);
+    font-size: 10px;
+    font-family: var(--mono);
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+
+  .sidebar-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 10px 16px;
+  }
+
+  /* Server card in sidebar */
+  .server-card {
+    margin: 0 12px;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+  }
+
+  .server-card-url {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--blue);
+    word-break: break-all;
+    margin-bottom: 6px;
+  }
+
+  .server-card-meta {
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* MAIN */
+  .main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* CONNECT SCREEN */
+  .connect-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    padding: 40px;
+    min-height: 500px;
+  }
+
+  .connect-card {
+    width: 100%;
+    max-width: 480px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px;
+  }
+
+  .connect-card h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .connect-card p {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .field label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    font-family: var(--mono);
+    letter-spacing: 0.3px;
+  }
+
+  .field input {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-family: var(--mono);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+
+  .field input:focus { border-color: rgba(34,217,138,0.4); }
+  .field input::placeholder { color: var(--muted2); }
+
+  .field input[type="password"] { letter-spacing: 4px; font-size: 16px; }
+
+  .connect-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .connect-actions .btn { flex: 1; justify-content: center; }
+
+  .verification-steps {
+    margin-top: 16px;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .vstep {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .vstep.done { color: var(--green); }
+  .vstep.active { color: var(--text); }
+  .vstep.error { color: var(--red); }
+
+  .vstep-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1px solid var(--border2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+    font-family: var(--mono);
+  }
+
+  .vstep.done .vstep-icon { background: var(--green-dim); border-color: rgba(34,217,138,0.3); color: var(--green); }
+  .vstep.active .vstep-icon { background: var(--bg4); border-color: var(--border2); color: var(--text); animation: spin 1s linear infinite; }
+  .vstep.error .vstep-icon { background: var(--red-dim); border-color: rgba(255,92,106,0.3); color: var(--red); }
+  .vstep.pending { color: var(--muted2); }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* PIN OVERLAY */
+  .pin-overlay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    padding: 40px;
+    min-height: 500px;
+  }
+
+  .pin-card {
+    width: 100%;
+    max-width: 360px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px;
+    text-align: center;
+  }
+
+  .pin-shield {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: var(--green-dim);
+    border: 1px solid rgba(34,217,138,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin: 0 auto 20px;
+  }
+
+  .pin-card h2 { font-size: 18px; margin-bottom: 6px; }
+  .pin-card p { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+
+  .pin-dots {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .pin-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid var(--border2);
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .pin-dot.filled {
+    background: var(--green);
+    border-color: var(--green);
+  }
+
+  .pin-input {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 20px;
+    font-family: var(--mono);
+    color: var(--text);
+    outline: none;
+    text-align: center;
+    letter-spacing: 8px;
+    width: 100%;
+    margin-bottom: 16px;
+  }
+
+  .pin-input:focus { border-color: rgba(34,217,138,0.4); }
+
+  .pin-error {
+    font-size: 12px;
+    color: var(--red);
+    margin-bottom: 12px;
+    font-family: var(--mono);
+    display: none;
+  }
+
+  /* DASHBOARD */
+  .dashboard {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .dash-header {
+    padding: 20px 24px 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .dash-header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .dash-title {
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dash-server-url {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--blue);
+    background: var(--blue-dim);
+    border: 1px solid rgba(79,156,249,0.2);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .dash-tabs {
+    display: flex;
+    gap: 2px;
+  }
+
+  .tab {
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s;
+    user-select: none;
+    margin-bottom: -1px;
+  }
+
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--green); border-bottom-color: var(--green); }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    padding: 20px 24px;
+  }
+
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-size: 26px;
+    font-weight: 600;
+    font-family: var(--mono);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-sub {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .stat-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    border-radius: 0 2px 0 0;
+    transition: width 1s ease;
+  }
+
+  .stat-card.green .stat-value { color: var(--green); }
+  .stat-card.green .stat-bar { background: var(--green); }
+  .stat-card.red .stat-value { color: var(--red); }
+  .stat-card.red .stat-bar { background: var(--red); }
+  .stat-card.blue .stat-value { color: var(--blue); }
+  .stat-card.blue .stat-bar { background: var(--blue); }
+  .stat-card.amber .stat-value { color: var(--amber); }
+  .stat-card.amber .stat-bar { background: var(--amber); }
+
+  /* CONTENT AREA */
+  .content-area {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 0;
+    flex: 1;
+    overflow: hidden;
+    border-top: 1px solid var(--border);
+  }
+
+  /* LOG FEED */
+  .log-feed-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--border);
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+  }
+
+  .panel-title {
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--mono);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .live-badge {
+    background: var(--red-dim);
+    color: var(--red);
+    border: 1px solid rgba(255,92,106,0.25);
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+    font-weight: 700;
+  }
+
+  .panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .search-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 6px 12px;
+  }
+
+  .search-box input {
+    background: none;
+    border: none;
+    outline: none;
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--text);
+    width: 160px;
+  }
+
+  .search-box input::placeholder { color: var(--muted2); }
+
+  .filter-chips {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .chip {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-family: var(--mono);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    color: var(--muted);
+    transition: all 0.12s;
+    user-select: none;
+  }
+
+  .chip:hover { border-color: var(--border2); color: var(--text); }
+  .chip.active-chip { border-color: rgba(34,217,138,0.3); background: var(--green-dim); color: var(--green); }
+  .chip.error-chip.active-chip { border-color: rgba(255,92,106,0.3); background: var(--red-dim); color: var(--red); }
+
+  /* LOG LIST */
+  .log-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+  }
+
+  .log-list::-webkit-scrollbar { width: 4px; }
+  .log-list::-webkit-scrollbar-track { background: transparent; }
+  .log-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .log-row {
+    display: grid;
+    grid-template-columns: 80px 60px 1fr 100px 120px;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  .log-row:hover { background: var(--bg2); }
+  .log-row.selected { background: var(--bg3); }
+
+  .log-row.new-entry { animation: fadeIn 0.3s ease; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .log-time { color: var(--muted); font-size: 11px; }
+
+  .method-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .method-GET { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(79,156,249,0.2); }
+  .method-POST { background: var(--green-dim); color: var(--green); border: 1px solid rgba(34,217,138,0.2); }
+  .method-PUT { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,166,35,0.2); }
+  .method-DELETE { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,92,106,0.2); }
+  .method-PATCH { background: rgba(139,92,246,0.15); color: #a78bfa; border: 1px solid rgba(139,92,246,0.2); }
+
+  .log-endpoint { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .status-code {
+    font-weight: 500;
+  }
+
+  .s2xx { color: var(--green); }
+  .s4xx { color: var(--amber); }
+  .s5xx { color: var(--red); }
+
+  .log-ip { color: var(--muted); font-size: 11px; }
+
+  /* LOG DETAIL SIDEBAR */
+  .detail-panel {
+    background: var(--bg2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .detail-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    color: var(--muted2);
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .detail-empty-icon { font-size: 28px; margin-bottom: 4px; }
+
+  .detail-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .detail-content::-webkit-scrollbar { width: 3px; }
+  .detail-content::-webkit-scrollbar-thumb { background: var(--border2); }
+
+  .detail-section {
+    margin-bottom: 20px;
+  }
+
+  .detail-section-title {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted2);
+    font-family: var(--mono);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .detail-section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .kv-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+
+  .kv-row:last-child { border-bottom: none; }
+
+  .kv-key { color: var(--muted); font-family: var(--mono); flex-shrink: 0; }
+  .kv-val { color: var(--text); font-family: var(--mono); text-align: right; word-break: break-all; }
+
+  .error-block {
+    background: var(--red-dim);
+    border: 1px solid rgba(255,92,106,0.2);
+    border-radius: 8px;
+    padding: 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--red);
+    line-height: 1.6;
+  }
+
+  .redacted {
+    background: rgba(255,255,255,0.05);
+    color: var(--muted2);
+    border-radius: 3px;
+    padding: 0 6px;
+    font-style: italic;
+  }
+
+  /* SPARKLINE */
+  .sparkline-wrap {
+    padding: 0 24px 16px;
+  }
+
+  .sparkline-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  .sparkline-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .sparkline-title {
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  canvas#sparkline {
+    width: 100%;
+    height: 56px;
+    display: block;
+  }
+
+  /* ENDPOINT LIST */
+  .endpoint-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 7px;
+    background: var(--bg3);
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-family: var(--mono);
+  }
+
+  .endpoint-path { color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .endpoint-count { color: var(--muted); }
+
+  .endpoint-bar-wrap {
+    width: 60px;
+    height: 4px;
+    background: var(--bg4);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .endpoint-bar { height: 100%; background: var(--blue); border-radius: 2px; }
+
+  /* TOGGLE SWITCH */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--mono);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .toggle {
+    width: 32px;
+    height: 18px;
+    background: var(--bg4);
+    border-radius: 10px;
+    position: relative;
+    border: 1px solid var(--border2);
+    transition: background 0.2s;
+  }
+
+  .toggle.on { background: var(--green-dim); border-color: rgba(34,217,138,0.3); }
+
+  .toggle-knob {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--muted);
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: left 0.2s, background 0.2s;
+  }
+
+  .toggle.on .toggle-knob { left: 16px; background: var(--green); }
+
+  .tab-panel { display: none; }
+  .tab-panel.active-tab { display: contents; }
+
+  /* EMPTY LOG STATE */
+  .log-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    gap: 8px;
+    color: var(--muted2);
+    font-size: 13px;
+  }
+
+  .log-empty-icon { font-size: 32px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon"><div class="logo-dot"></div></div>
+    Log<span class="dim">Watch</span>
+  </div>
+  <div class="topbar-right">
+    <div class="status-pill disconnected" id="globalStatus">
+      <div class="status-dot"></div>
+      <span id="globalStatusText">No Connection</span>
+    </div>
+    <button class="btn" onclick="showExport()">↓ Export CSV</button>
+    <button class="btn danger" id="disconnectBtn" onclick="disconnect()" style="display:none;">Disconnect</button>
+  </div>
+</div>
+
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Navigation</div>
+      <div class="nav-item active" id="nav-live" onclick="switchNavTab('live')">
+        <div class="nav-icon">◉</div>
+        Live Feed
+        <span class="nav-badge" id="errorBadge" style="display:none;">0</span>
+      </div>
+      <div class="nav-item" id="nav-analytics" onclick="switchNavTab('analytics')">
+        <div class="nav-icon">▦</div>
+        Analytics
+      </div>
+      <div class="nav-item" id="nav-history" onclick="switchNavTab('history')">
+        <div class="nav-icon">◷</div>
+        History
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Server</div>
+      <div id="sidebarServerCard" style="display:none;">
+        <div class="server-card">
+          <div class="server-card-url" id="sidebarUrl">—</div>
+          <div class="server-card-meta">
+            <span id="sidebarUptime">Connected 0s ago</span>
+            <span style="color: var(--green); font-size: 10px;">● LIVE</span>
+          </div>
+        </div>
+      </div>
+      <div id="sidebarConnectHint" style="padding: 0 8px; font-size: 12px; color: var(--muted2);">No server connected.</div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Settings</div>
+      <div class="nav-item" onclick="toggleAutoscroll()">
+        <div class="nav-icon">⤵</div>
+        Auto-scroll
+        <div style="margin-left:auto;">
+          <div class="toggle on" id="autoscrollToggle"><div class="toggle-knob"></div></div>
+        </div>
+      </div>
+      <div class="nav-item" onclick="toggleSound()">
+        <div class="nav-icon">♪</div>
+        Sound alerts
+        <div style="margin-left:auto;">
+          <div class="toggle" id="soundToggle"><div class="toggle-knob"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main" id="mainContent">
+
+    <!-- CONNECT SCREEN -->
+    <div id="connectScreen" class="connect-screen">
+      <div class="connect-card">
+        <h2>Connect to a server</h2>
+        <p>Enter the URL of an Express server with the LogWatch script installed. The system will verify the handshake before granting access.</p>
+
+        <div class="field">
+          <label>Server URL</label>
+          <input type="text" id="serverUrlInput" placeholder="https://your-api.onrender.com" />
+        </div>
+
+        <div class="connect-actions">
+          <button class="btn primary" onclick="startVerification()">Verify & Connect</button>
+        </div>
+
+        <div class="verification-steps" id="verificationSteps" style="display:none;">
+          <div class="vstep pending" id="vstep1">
+            <div class="vstep-icon">1</div>
+            <span>Sending handshake request</span>
+          </div>
+          <div class="vstep pending" id="vstep2">
+            <div class="vstep-icon">2</div>
+            <span>Verifying LogWatch script presence</span>
+          </div>
+          <div class="vstep pending" id="vstep3">
+            <div class="vstep-icon">3</div>
+            <span>Establishing WebSocket channel</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PIN SCREEN -->
+    <div id="pinScreen" class="pin-overlay" style="display:none;">
+      <div class="pin-card">
+        <div class="pin-shield">🔐</div>
+        <h2>Enter your PIN</h2>
+        <p>This server requires PIN authentication. Enter the <code style="font-family:var(--mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:3px;">MONITOR_PIN</code> from the server's <code style="font-family:var(--mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:3px;">.env</code> file.</p>
+
+        <div class="pin-dots">
+          <div class="pin-dot" id="pd1"></div>
+          <div class="pin-dot" id="pd2"></div>
+          <div class="pin-dot" id="pd3"></div>
+          <div class="pin-dot" id="pd4"></div>
+          <div class="pin-dot" id="pd5"></div>
+          <div class="pin-dot" id="pd6"></div>
+        </div>
+
+        <input type="password" class="pin-input" id="pinInput" maxlength="6" placeholder="······" oninput="onPinInput(this.value)" onkeydown="onPinKey(event)" />
+        <div class="pin-error" id="pinError">Incorrect PIN. Connection terminated.</div>
+        <button class="btn primary" onclick="submitPin()" style="width:100%;justify-content:center;">Authenticate</button>
+        <button class="btn" onclick="backToConnect()" style="width:100%;justify-content:center;margin-top:8px;">← Back</button>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard" style="display:none;" class="dashboard">
+
+      <!-- Header with tabs -->
+      <div class="dash-header">
+        <div class="dash-header-top">
+          <div class="dash-title">
+            Live Monitor
+            <span class="dash-server-url" id="dashServerUrl">api.example.com</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-size:11px;color:var(--muted);font-family:var(--mono);" id="logCountLabel">0 logs</span>
+            <div class="filter-chips">
+              <div class="chip active-chip" onclick="setFilter('all', this)">ALL</div>
+              <div class="chip" onclick="setFilter('2xx', this)">2xx</div>
+              <div class="chip error-chip" onclick="setFilter('4xx', this)">4xx</div>
+              <div class="chip error-chip" onclick="setFilter('5xx', this)">5xx</div>
+            </div>
+          </div>
+        </div>
+        <div class="dash-tabs">
+          <div class="tab active" data-tab="livefeed" onclick="switchDashTab('livefeed', this)">Live Feed</div>
+          <div class="tab" data-tab="analytics" onclick="switchDashTab('analytics', this)">Analytics</div>
+          <div class="tab" data-tab="history" onclick="switchDashTab('history', this)">History</div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card green">
+          <div class="stat-label">Total Requests</div>
+          <div class="stat-value" id="statTotal">0</div>
+          <div class="stat-sub">since connect</div>
+          <div class="stat-bar" id="statBarTotal" style="width:60%;"></div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Success Rate</div>
+          <div class="stat-value" id="statSuccessRate">—</div>
+          <div class="stat-sub">2xx responses</div>
+          <div class="stat-bar" id="statBarSuccess" style="width:0%;"></div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-label">Errors</div>
+          <div class="stat-value" id="statErrors">0</div>
+          <div class="stat-sub">4xx + 5xx</div>
+          <div class="stat-bar" id="statBarErrors" style="width:0%;"></div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-label">Avg Latency</div>
+          <div class="stat-value" id="statLatency">—</div>
+          <div class="stat-sub">milliseconds</div>
+          <div class="stat-bar" id="statBarLatency" style="width:40%;"></div>
+        </div>
+      </div>
+
+      <!-- Sparkline -->
+      <div class="sparkline-wrap">
+        <div class="sparkline-panel">
+          <div class="sparkline-header">
+            <span class="sparkline-title">Request Volume (last 60s)</span>
+            <div class="toggle-row" id="autoscrollRow">
+              <span id="liveLabel" style="color:var(--green);font-size:11px;">● STREAMING</span>
+            </div>
+          </div>
+          <canvas id="sparkline" height="56"></canvas>
+        </div>
+      </div>
+
+      <!-- Live Feed Tab -->
+      <div id="tabLivefeed" class="content-area" style="display:grid;">
+        <div class="log-feed-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              Request Log
+              <span class="live-badge">LIVE</span>
+            </div>
+            <div class="panel-actions">
+              <div class="search-box">
+                <span style="color:var(--muted);font-size:12px;">⌕</span>
+                <input type="text" placeholder="filter endpoint..." id="searchInput" oninput="filterLogs(this.value)" />
+              </div>
+              <button class="btn" onclick="clearLogs()">Clear</button>
+            </div>
+          </div>
+
+          <!-- Table header -->
+          <div style="display:grid;grid-template-columns:80px 60px 1fr 100px 120px;gap:12px;padding:8px 20px;background:var(--bg2);border-bottom:1px solid var(--border);">
+            <span style="font-size:10px;color:var(--muted2);font-family:var(--mono);letter-spacing:0.5px;text-transform:uppercase;">Time</span>
+            <span style="font-size:10px;color:var(--muted2);font-family:var(--mono);letter-spacing:0.5px;text-transform:uppercase;">Method</span>
+            <span style="font-size:10px;color:var(--muted2);font-family:var(--mono);letter-spacing:0.5px;text-transform:uppercase;">Endpoint</span>
+            <span style="font-size:10px;color:var(--muted2);font-family:var(--mono);letter-spacing:0.5px;text-transform:uppercase;">Status</span>
+            <span style="font-size:10px;color:var(--muted2);font-family:var(--mono);letter-spacing:0.5px;text-transform:uppercase;">IP</span>
+          </div>
+
+          <div class="log-list" id="logList">
+            <div class="log-empty" id="logEmpty">
+              <div class="log-empty-icon">◌</div>
+              Waiting for requests...
+            </div>
+          </div>
+        </div>
+
+        <!-- Detail Panel -->
+        <div class="detail-panel">
+          <div class="panel-header">
+            <div class="panel-title">Request Detail</div>
+          </div>
+          <div id="detailEmpty" class="detail-empty">
+            <div class="detail-empty-icon">→</div>
+            <span>Select a log entry</span>
+          </div>
+          <div id="detailContent" class="detail-content" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Analytics Tab -->
+      <div id="tabAnalytics" class="content-area" style="display:none;padding:20px;overflow-y:auto;gap:16px;grid-template-columns:1fr 1fr;">
+        <div>
+          <div class="panel-header" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px 10px 0 0;border-bottom:none;">
+            <div class="panel-title">Top Endpoints</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:0 0 10px 10px;padding:16px;" id="endpointList">
+            <div style="color:var(--muted2);font-size:12px;text-align:center;padding:20px;">No data yet.</div>
+          </div>
+        </div>
+        <div>
+          <div class="panel-header" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px 10px 0 0;border-bottom:none;">
+            <div class="panel-title">Status Distribution</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:0 0 10px 10px;padding:16px;" id="statusDist">
+            <div style="color:var(--muted2);font-size:12px;text-align:center;padding:20px;">No data yet.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- History Tab -->
+      <div id="tabHistory" class="content-area" style="display:none; padding:20px; overflow-y:auto;">
+        <div style="max-width:700px; width:100%;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+            <div>
+              <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Session History</div>
+              <div style="font-size:12px;color:var(--muted);">Stored permanently in your browser via IndexedDB. Persists across tab closes and reconnects.</div>
+            </div>
+            <button class="btn danger" onclick="clearAllHistory()" style="flex-shrink:0; margin-left:20px;">
+              🗑 Clear All Logs
+            </button>
+          </div>
+          <div id="historyList">
+            <div style="color:var(--muted2);font-size:12px;text-align:center;padding:40px;">No history stored yet.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+let logs = [];
+let filteredLogs = [];
+let selectedLog = null;
+let filterMode = 'all';
+let searchTerm = '';
+let autoscroll = true;
+let soundOn = false;
+let connectedUrl = '';
+let connectTime = null;
+let sparkData = new Array(60).fill(0);
+let sparkBuckets = new Array(60).fill(0);
+let sparkTick = 0;
+let errorCount = 0;
+let totalLatency = 0;
+let endpointMap = {};
+let statusMap = { '2xx': 0, '4xx': 0, '5xx': 0 };
+let ws = null;
+let uptimeInterval = null;
+let sparkInterval = null;
+let db = null;
+let wsReconnectTimer = null;
+let pendingPin = null;
+
+// ── INDEXEDDB ──────────────────────────────────────────────────────────────
+function initDB() {
+  const req = indexedDB.open('ghostlog_db', 1);
+  req.onupgradeneeded = e => {
+    const d = e.target.result;
+    if (!d.objectStoreNames.contains('logs')) {
+      const store = d.createObjectStore('logs', { keyPath: 'id', autoIncrement: true });
+      store.createIndex('timestamp', 'timestamp');
+      store.createIndex('endpoint', 'endpoint');
+      store.createIndex('status', 'status');
+    }
+  };
+  req.onsuccess = e => { db = e.target.result; };
+  req.onerror   = () => console.warn('[GhostLog] IndexedDB unavailable — history disabled');
+}
+
+function saveLogToDB(log) {
+  if (!db) return;
+  try {
+    const tx = db.transaction('logs', 'readwrite');
+    // strip large fields before storing to keep IndexedDB lean
+    const slim = {
+      timestamp: log.timestamp, method: log.method, endpoint: log.endpoint,
+      url: log.url, status: log.status, success: log.success,
+      latency: log.latency, ip: log.ip, error_log: log.error_log
+    };
+    tx.objectStore('logs').add(slim);
+  } catch {}
+}
+
+function loadHistory() {
+  const el = document.getElementById('historyList');
+  if (!db) {
+    el.innerHTML = '<div style="color:var(--muted2);font-size:12px;text-align:center;padding:40px;">IndexedDB not available in this browser.</div>';
+    return;
+  }
+  el.innerHTML = '<div style="color:var(--muted2);font-size:12px;text-align:center;padding:20px;">Loading…</div>';
+
+  try {
+    const tx    = db.transaction('logs', 'readonly');
+    const store = tx.objectStore('logs');
+    const req   = store.getAll();
+    req.onsuccess = e => {
+      const all = e.target.result.reverse(); // newest first
+      renderHistory(all);
+    };
+    req.onerror = () => {
+      el.innerHTML = '<div style="color:var(--red);font-size:12px;text-align:center;padding:40px;">Failed to read history.</div>';
+    };
+  } catch {}
+}
+
+function clearAllHistory() {
+  if (!db) return;
+  const confirmed = window.confirm('Delete all stored log history? This cannot be undone.');
+  if (!confirmed) return;
+
+  try {
+    const tx    = db.transaction('logs', 'readwrite');
+    const store = tx.objectStore('logs');
+    const req   = store.clear();
+    req.onsuccess = () => {
+      document.getElementById('historyList').innerHTML =
+        '<div style="color:var(--muted2);font-size:12px;text-align:center;padding:40px;">All logs cleared.</div>';
+    };
+  } catch {}
+}
+
+// ── NAVIGATION ─────────────────────────────────────────────────────────────
+function switchNavTab(tab) {
+  // Sidebar nav active state
+  ['live','analytics','history'].forEach(t => {
+    document.getElementById('nav-' + t).classList.toggle('active', t === tab);
+  });
+
+  // Dashboard top tabs active state (keep in sync)
+  document.querySelectorAll('.tab').forEach(el => {
+    const map = { live: 'livefeed', analytics: 'analytics', history: 'history' };
+    el.classList.toggle('active', el.getAttribute('data-tab') === map[tab]);
+  });
+
+  // Show/hide content panels
+  document.getElementById('tabLivefeed').style.display  = tab === 'live'      ? 'grid'  : 'none';
+  document.getElementById('tabAnalytics').style.display = tab === 'analytics' ? 'grid'  : 'none';
+  document.getElementById('tabHistory').style.display   = tab === 'history'   ? 'flex'  : 'none';
+
+  if (tab === 'analytics') renderAnalytics();
+  if (tab === 'history')   loadHistory();
+}
+
+// Keep top tabs in sync with sidebar
+function switchDashTab(tab, el) {
+  const reverse = { livefeed: 'live', analytics: 'analytics', history: 'history' };
+  switchNavTab(reverse[tab] || 'live');
+}
+
+// ── STEP HELPERS ───────────────────────────────────────────────────────────
+function setStep(n, state) {
+  const el = document.getElementById('vstep' + n);
+  el.className = 'vstep ' + state;
+  const icon = el.querySelector('.vstep-icon');
+  if (state === 'done') icon.textContent = '✓';
+  else if (state === 'error') icon.textContent = '✕';
+  else icon.textContent = n;
+}
+
+function setStepText(n, text) {
+  document.getElementById('vstep' + n).querySelector('span').textContent = text;
+}
+
+// ── CONNECTION ─────────────────────────────────────────────────────────────
+async function startVerification() {
+  const raw = document.getElementById('serverUrlInput').value.trim();
+  if (!raw) return;
+
+  // normalise — strip trailing slash
+  const url = raw.replace(/\/$/, '');
+
+  const steps = document.getElementById('verificationSteps');
+  steps.style.display = 'flex';
+  setStep(1, 'active'); setStep(2, 'pending'); setStep(3, 'pending');
+  setStepText(1, 'Sending handshake request…');
+
+  // ── Step 1: Handshake ──────────────────────────────────────────────────
+  let handshakeOk = false;
+  try {
+    const res = await fetch(`${url}/__logwatch__/handshake`, { method: 'GET' });
+    handshakeOk = res.headers.get('x-logwatch-acknowledge') === 'true';
+  } catch (e) {
+    handshakeOk = false;
+  }
+
+  if (!handshakeOk) {
+    setStep(1, 'error');
+    setStepText(1, 'Handshake failed — LogWatch script not detected on this server');
+    return;
+  }
+
+  setStep(1, 'done');
+  setStepText(1, 'Handshake confirmed');
+
+  // ── Step 2: Script verified ────────────────────────────────────────────
+  setStep(2, 'active');
+  setStepText(2, 'LogWatch script detected ✓');
+  await delay(400);
+  setStep(2, 'done');
+
+  // ── Step 3: Open WebSocket ─────────────────────────────────────────────
+  setStep(3, 'active');
+  setStepText(3, 'Establishing WebSocket channel…');
+
+  connectedUrl = url;
+
+  const wsUrl = url.replace(/^https/, 'wss').replace(/^http/, 'ws') + '/__logwatch__/stream';
+
+  let wsReady = false;
+  try {
+    ws = new WebSocket(wsUrl);
+    await new Promise((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error('WS timeout')), 6000);
+      ws.onopen  = () => { clearTimeout(t); resolve(); };
+      ws.onerror = () => { clearTimeout(t); reject(new Error('WS connection failed')); };
+    });
+    wsReady = true;
+  } catch (e) {
+    wsReady = false;
+  }
+
+  if (!wsReady) {
+    setStep(3, 'error');
+    setStepText(3, 'WebSocket connection failed');
+    return;
+  }
+
+  setStep(3, 'done');
+  setStepText(3, 'Channel open — enter PIN to authenticate');
+
+  // Show PIN screen — actual auth happens over the socket
+  document.getElementById('connectScreen').style.display = 'none';
+  document.getElementById('pinScreen').style.display = 'flex';
+
+  // Listen for auth responses on the socket
+  ws.onmessage = handleWsMessage;
+  ws.onclose   = handleWsClose;
+  ws.onerror   = (e) => console.error('[LogWatch] WS error', e);
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function handleWsMessage(event) {
+  let msg;
+  try { msg = JSON.parse(event.data); } catch { return; }
+
+  if (msg.type === 'auth_ok') {
+    openDashboard();
+    return;
+  }
+
+  if (msg.type === 'auth_fail') {
+    // Show error on PIN screen
+    document.getElementById('pinError').style.display = 'block';
+    document.getElementById('pinInput').value = '';
+    onPinInput('');
+    return;
+  }
+
+  if (msg.type === 'log') {
+    ingestLog({ ...msg.data, id: Date.now() + Math.random() });
+    return;
+  }
+
+  if (msg.type === 'replay') {
+    msg.logs.forEach(l => ingestLog({ ...l, id: Date.now() + Math.random() }));
+    return;
+  }
+
+  // 'challenge' and 'pong' — no action needed
+}
+
+function handleWsClose() {
+  if (!connectedUrl) return; // intentional disconnect
+  setGlobalStatus('disconnected', 'Disconnected');
+  // try to reconnect once after 3s
+  clearTimeout(wsReconnectTimer);
+  wsReconnectTimer = setTimeout(() => {
+    if (connectedUrl) reconnectWs();
+  }, 3000);
+}
+
+function reconnectWs() {
+  const wsUrl = connectedUrl.replace(/^https/, 'wss').replace(/^http/, 'ws') + '/__logwatch__/stream';
+  try {
+    ws = new WebSocket(wsUrl);
+    ws.onopen    = () => {
+      ws.send(JSON.stringify({ type: 'auth', pin: pendingPin }));
+      setGlobalStatus('connected', 'Connected');
+    };
+    ws.onmessage = handleWsMessage;
+    ws.onclose   = handleWsClose;
+  } catch {}
+}
+
+function onPinInput(val) {
+  for (let i = 1; i <= 6; i++) {
+    document.getElementById('pd' + i).classList.toggle('filled', i <= val.length);
+  }
+}
+
+function onPinKey(e) {
+  if (e.key === 'Enter') submitPin();
+}
+
+function submitPin() {
+  const pin = document.getElementById('pinInput').value.trim();
+  if (!pin) return;
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    document.getElementById('pinError').style.display = 'block';
+    document.getElementById('pinError').textContent = 'WebSocket not open. Go back and reconnect.';
+    return;
+  }
+  document.getElementById('pinError').style.display = 'none';
+  pendingPin = pin;
+  // Send PIN over the socket — server decides accept/reject
+  ws.send(JSON.stringify({ type: 'auth', pin }));
+}
+
+function backToConnect() {
+  if (ws) { ws.onclose = null; ws.close(); ws = null; }
+  pendingPin = null;
+  document.getElementById('pinScreen').style.display = 'none';
+  document.getElementById('connectScreen').style.display = 'flex';
+  document.getElementById('verificationSteps').style.display = 'none';
+  document.getElementById('pinError').style.display = 'none';
+  document.getElementById('pinInput').value = '';
+  onPinInput('');
+}
+
+function openDashboard() {
+  document.getElementById('pinScreen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'flex';
+  document.getElementById('disconnectBtn').style.display = 'flex';
+
+  setGlobalStatus('connected', 'Connected');
+
+  const urlDisplay = connectedUrl.replace(/^https?:\/\//, '');
+  document.getElementById('dashServerUrl').textContent = urlDisplay;
+  document.getElementById('sidebarUrl').textContent = urlDisplay;
+  document.getElementById('sidebarServerCard').style.display = 'block';
+  document.getElementById('sidebarConnectHint').style.display = 'none';
+
+  connectTime = Date.now();
+  uptimeInterval = setInterval(updateUptime, 1000);
+  initSparkline();
+}
+
+function setGlobalStatus(state, text) {
+  const el = document.getElementById('globalStatus');
+  el.className = 'status-pill ' + state;
+  document.getElementById('globalStatusText').textContent = text;
+}
+
+function disconnect() {
+  clearInterval(uptimeInterval);
+  clearInterval(sparkInterval);
+  clearTimeout(wsReconnectTimer);
+
+  if (ws) { ws.onclose = null; ws.close(); ws = null; }
+
+  connectedUrl = ''; pendingPin = null;
+  logs = []; filteredLogs = []; errorCount = 0; totalLatency = 0;
+  endpointMap = {}; statusMap = { '2xx': 0, '4xx': 0, '5xx': 0 };
+  sparkData = new Array(60).fill(0); sparkBuckets = new Array(60).fill(0);
+
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('connectScreen').style.display = 'flex';
+  document.getElementById('verificationSteps').style.display = 'none';
+  document.getElementById('serverUrlInput').value = '';
+  document.getElementById('disconnectBtn').style.display = 'none';
+  document.getElementById('pinInput').value = '';
+  onPinInput('');
+
+  setGlobalStatus('disconnected', 'No Connection');
+  document.getElementById('sidebarServerCard').style.display = 'none';
+  document.getElementById('sidebarConnectHint').style.display = 'block';
+  document.getElementById('logList').innerHTML = '<div class="log-empty" id="logEmpty"><div class="log-empty-icon">◌</div>Waiting for requests...</div>';
+  updateStats();
+}
+
+function updateUptime() {
+  const s = Math.floor((Date.now() - connectTime) / 1000);
+  const m = Math.floor(s / 60), sec = s % 60;
+  document.getElementById('sidebarUptime').textContent = m > 0 ? `Connected ${m}m ${sec}s` : `Connected ${sec}s`;
+}
+
+// ── LOG INGESTION ──────────────────────────────────────────────────────────
+function ingestLog(log) {
+  logs.unshift(log);
+  if (logs.length > 500) logs.pop();
+  saveLogToDB(log);
+
+  // stats
+  const statusClass = log.status >= 500 ? '5xx' : log.status >= 400 ? '4xx' : '2xx';
+  statusMap[statusClass]++;
+  if (!log.success) errorCount++;
+  totalLatency += log.latency || 0;
+
+  endpointMap[log.endpoint] = (endpointMap[log.endpoint] || 0) + 1;
+
+  // sparkline bucket
+  sparkBuckets[sparkTick % 60]++;
+
+  updateStats();
+  applyFilter();
+  if (errorCount > 0) {
+    document.getElementById('errorBadge').style.display = 'inline';
+    document.getElementById('errorBadge').textContent = errorCount;
+  }
+}
+
+// ── FILTERING ──────────────────────────────────────────────────────────────
+function setFilter(mode, el) {
+  filterMode = mode;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active-chip'));
+  el.classList.add('active-chip');
+  applyFilter();
+}
+
+function filterLogs(term) {
+  searchTerm = term.toLowerCase();
+  applyFilter();
+}
+
+function applyFilter() {
+  filteredLogs = logs.filter(l => {
+    const matchStatus = filterMode === 'all' || (filterMode === '2xx' && l.status < 300) || (filterMode === '4xx' && l.status >= 400 && l.status < 500) || (filterMode === '5xx' && l.status >= 500);
+    const matchSearch = !searchTerm || l.endpoint.toLowerCase().includes(searchTerm) || l.ip.includes(searchTerm);
+    return matchStatus && matchSearch;
+  });
+  renderLogs();
+}
+
+// ── RENDER LOGS ────────────────────────────────────────────────────────────
+function renderLogs() {
+  const list = document.getElementById('logList');
+  document.getElementById('logCountLabel').textContent = `${logs.length} logs`;
+
+  if (filteredLogs.length === 0) {
+    list.innerHTML = '<div class="log-empty"><div class="log-empty-icon">◌</div>No matching logs.</div>';
+    return;
+  }
+
+  list.innerHTML = filteredLogs.slice(0, 100).map((log, i) => {
+    const t = new Date(log.timestamp);
+    const time = t.toLocaleTimeString('en-GB', { hour12: false });
+    const sc = log.status >= 500 ? 's5xx' : log.status >= 400 ? 's4xx' : 's2xx';
+    const isNew = i === 0;
+    return `<div class="log-row ${isNew ? 'new-entry' : ''} ${selectedLog && selectedLog.id === log.id ? 'selected' : ''}" onclick="selectLog(${log.id})">
+      <span class="log-time">${time}</span>
+      <span class="method-badge method-${log.method}">${log.method}</span>
+      <span class="log-endpoint">${log.endpoint}</span>
+      <span class="status-code ${sc}">${log.status}</span>
+      <span class="log-ip">${log.ip}</span>
+    </div>`;
+  }).join('');
+
+  if (autoscroll && filteredLogs.length > 0) {
+    const firstRow = list.querySelector('.log-row');
+    if (firstRow) firstRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function selectLog(id) {
+  selectedLog = logs.find(l => l.id === id);
+  renderLogs();
+  renderDetail();
+}
+
+function renderDetail() {
+  if (!selectedLog) return;
+  document.getElementById('detailEmpty').style.display = 'none';
+  const el = document.getElementById('detailContent');
+  el.style.display = 'block';
+  const log = selectedLog;
+  const sc = log.status >= 500 ? 's5xx' : log.status >= 400 ? 's4xx' : 's2xx';
+
+  el.innerHTML = `
+    <div class="detail-section">
+      <div class="detail-section-title">Request</div>
+      <div class="kv-row"><span class="kv-key">Method</span><span class="kv-val"><span class="method-badge method-${log.method}">${log.method}</span></span></div>
+      <div class="kv-row"><span class="kv-key">Endpoint</span><span class="kv-val" style="color:var(--blue)">${log.endpoint}</span></div>
+      <div class="kv-row"><span class="kv-key">IP</span><span class="kv-val">${log.ip}</span></div>
+      <div class="kv-row"><span class="kv-key">Timestamp</span><span class="kv-val">${new Date(log.timestamp).toLocaleString()}</span></div>
+      <div class="kv-row"><span class="kv-key">Latency</span><span class="kv-val">${log.latency}ms</span></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">Response</div>
+      <div class="kv-row"><span class="kv-key">Status</span><span class="kv-val"><span class="status-code ${sc}">${log.status}</span></span></div>
+      <div class="kv-row"><span class="kv-key">Success</span><span class="kv-val" style="color:${log.success ? 'var(--green)' : 'var(--red)'}">${log.success ? 'true' : 'false'}</span></div>
+    </div>
+    ${log.error_log ? `<div class="detail-section"><div class="detail-section-title">Error</div><div class="error-block">${log.error_log}</div></div>` : ''}
+    <div class="detail-section">
+      <div class="detail-section-title">Headers</div>
+      ${Object.entries(log.headers).map(([k, v]) => `<div class="kv-row"><span class="kv-key">${k}</span><span class="kv-val ${v === '[REDACTED]' ? 'redacted' : ''}">${v}</span></div>`).join('')}
+    </div>
+    ${log.body ? `<div class="detail-section"><div class="detail-section-title">Body</div>${Object.entries(log.body).map(([k, v]) => `<div class="kv-row"><span class="kv-key">${k}</span><span class="kv-val ${v === '[REDACTED]' ? 'redacted' : ''}">${v}</span></div>`).join('')}</div>` : ''}
+  `;
+}
+
+// ── STATS ──────────────────────────────────────────────────────────────────
+function updateStats() {
+  const total = logs.length;
+  document.getElementById('statTotal').textContent = total;
+  const successCount = statusMap['2xx'];
+  const rate = total > 0 ? Math.round((successCount / total) * 100) : 0;
+  document.getElementById('statSuccessRate').textContent = total > 0 ? rate + '%' : '—';
+  document.getElementById('statBarSuccess').style.width = rate + '%';
+  document.getElementById('statErrors').textContent = errorCount;
+  const errRate = total > 0 ? Math.round((errorCount / total) * 100) : 0;
+  document.getElementById('statBarErrors').style.width = Math.min(errRate * 2, 100) + '%';
+  const avgLat = total > 0 ? Math.round(totalLatency / total) : 0;
+  document.getElementById('statLatency').textContent = total > 0 ? avgLat + 'ms' : '—';
+  document.getElementById('statBarLatency').style.width = Math.min(avgLat / 5, 100) + '%';
+}
+
+// ── SPARKLINE ──────────────────────────────────────────────────────────────
+function initSparkline() {
+  const canvas = document.getElementById('sparkline');
+  const ctx = canvas.getContext('2d');
+
+  sparkInterval = setInterval(() => {
+    sparkTick++;
+    sparkData.push(sparkBuckets[(sparkTick - 1) % 60]);
+    if (sparkData.length > 60) sparkData.shift();
+    sparkBuckets[sparkTick % 60] = 0;
+    drawSparkline(canvas, ctx);
+  }, 1000);
+
+  drawSparkline(canvas, ctx);
+}
+
+function drawSparkline(canvas, ctx) {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const max = Math.max(...sparkData, 1);
+  const step = W / (sparkData.length - 1);
+
+  ctx.beginPath();
+  sparkData.forEach((v, i) => {
+    const x = i * step;
+    const y = H - (v / max) * (H - 8) - 4;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, 'rgba(34,217,138,0.5)');
+  grad.addColorStop(1, 'rgba(34,217,138,0)');
+
+  ctx.strokeStyle = '#22d98a';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+}
+
+// ── ANALYTICS ─────────────────────────────────────────────────────────────
+function renderAnalytics() {
+  const sorted = Object.entries(endpointMap).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const maxVal = sorted[0] ? sorted[0][1] : 1;
+  const epList = document.getElementById('endpointList');
+
+  if (sorted.length === 0) {
+    epList.innerHTML = '<div style="color:var(--muted2);font-size:12px;text-align:center;padding:20px;">No data yet.</div>';
+  } else {
+    epList.innerHTML = sorted.map(([path, count]) => `
+      <div class="endpoint-item">
+        <span class="endpoint-path">${path}</span>
+        <div class="endpoint-bar-wrap"><div class="endpoint-bar" style="width:${Math.round((count/maxVal)*100)}%"></div></div>
+        <span class="endpoint-count">${count}</span>
+      </div>
+    `).join('');
+  }
+
+  const total = logs.length || 1;
+  const dist = document.getElementById('statusDist');
+  dist.innerHTML = [
+    { label: '2xx Success', color: 'var(--green)', count: statusMap['2xx'] },
+    { label: '4xx Client Error', color: 'var(--amber)', count: statusMap['4xx'] },
+    { label: '5xx Server Error', color: 'var(--red)', count: statusMap['5xx'] },
+  ].map(({ label, color, count }) => `
+    <div style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;font-family:var(--mono);margin-bottom:6px;">
+        <span style="color:${color}">${label}</span>
+        <span style="color:var(--muted)">${count} (${Math.round(count/total*100)}%)</span>
+      </div>
+      <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;">
+        <div style="height:100%;width:${Math.round(count/total*100)}%;background:${color};border-radius:3px;transition:width 0.5s;"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── HISTORY ────────────────────────────────────────────────────────────────
+function renderHistory(items) {
+  const el = document.getElementById('historyList');
+  if (!items || !items.length) {
+    el.innerHTML = '<div style="color:var(--muted2);font-size:12px;text-align:center;padding:40px;">No history stored yet. Connect to a server and fire some requests.</div>';
+    return;
+  }
+
+  const shown = items.slice(0, 500);
+  const overflow = items.length > 500 ? `<div style="font-size:11px;color:var(--muted);text-align:center;padding:8px;">Showing newest 500 of ${items.length.toLocaleString()} total entries</div>` : '';
+
+  el.innerHTML = `
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;font-family:var(--mono);">${items.length.toLocaleString()} entries stored</div>
+    ${shown.map(log => {
+      const sc  = log.status >= 500 ? 's5xx' : log.status >= 400 ? 's4xx' : 's2xx';
+      const t   = new Date(log.timestamp).toLocaleString();
+      return `<div class="log-row" style="grid-template-columns:150px 60px 1fr 80px 60px; margin-bottom:2px; border-radius:6px; border:1px solid var(--border);">
+        <span class="log-time" style="font-size:10px;">${t}</span>
+        <span class="method-badge method-${log.method}">${log.method}</span>
+        <span class="log-endpoint">${log.endpoint}</span>
+        <span class="status-code ${sc}">${log.status}</span>
+        <span class="log-time">${log.latency ?? '—'}ms</span>
+      </div>`;
+    }).join('')}
+    ${overflow}
+  `;
+}
+
+// ── EXPORT ─────────────────────────────────────────────────────────────────
+function showExport() {
+  if (!logs.length) return alert('No logs to export.');
+  const headers = ['timestamp', 'method', 'endpoint', 'status', 'ip', 'latency', 'success', 'error_log'];
+  const csv = [headers.join(','), ...logs.map(l => headers.map(h => JSON.stringify(l[h] ?? '')).join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `logwatch_${Date.now()}.csv`;
+  a.click();
+}
+
+// ── TOGGLES ────────────────────────────────────────────────────────────────
+function toggleAutoscroll() {
+  autoscroll = !autoscroll;
+  const t = document.getElementById('autoscrollToggle');
+  t.classList.toggle('on', autoscroll);
+}
+
+function toggleSound() {
+  soundOn = !soundOn;
+  const t = document.getElementById('soundToggle');
+  t.classList.toggle('on', soundOn);
+}
+
+function clearLogs() {
+  logs = []; filteredLogs = []; errorCount = 0; totalLatency = 0;
+  endpointMap = {}; statusMap = { '2xx': 0, '4xx': 0, '5xx': 0 };
+  document.getElementById('logList').innerHTML = '<div class="log-empty"><div class="log-empty-icon">◌</div>Waiting for requests...</div>';
+  document.getElementById('errorBadge').style.display = 'none';
+  updateStats();
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+initDB();
+</script>
+</body>
+</html>
