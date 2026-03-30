@@ -1,5 +1,6 @@
 # Log Watch
 
+Live Demo : https://vimeo.com/1178584580?share=copy&fl=sv&fe=ci
 
 A real-time API observability tool with a zero-trace architecture.
 
