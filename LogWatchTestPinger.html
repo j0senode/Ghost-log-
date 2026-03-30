@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GhostLog Traffic Console</title>
+    <title>Log Watch Traffic Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #000000; color: #e5e7eb; }
@@ -20,7 +20,6 @@
             background-color: #161616;
             border-color: #333;
         }
-        /* Custom scrollbar for the pitch black look */
         #console::-webkit-scrollbar { width: 6px; }
         #console::-webkit-scrollbar-track { background: #000; }
         #console::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
@@ -31,7 +30,7 @@
         
         <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 gap-8">
             <div>
-                <h1 class="text-4xl font-black text-white tracking-tighter italic">GHOST<span class="text-blue-600">LOG</span></h1>
+                <h1 class="text-4xl font-black text-white tracking-tighter italic">Log<span class="text-blue-600">Watch</span></h1>
                 <p class="text-gray-600 text-xs font-bold uppercase tracking-[0.3em] mt-1">Endpoint Traffic Generator</p>
             </div>
             <div class="w-full lg:w-auto flex items-center gap-4 bg-[#0a0a0a] p-3 rounded-2xl border border-[#1a1a1a]">
@@ -125,7 +124,7 @@
 
         async function ping(path, method, body = null) {
             const baseUrl = document.getElementById('baseUrl').value;
-            // Ensure no double slashes
+            
             const cleanUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
             const fullUrl = `${cleanUrl}${path}`;
             
