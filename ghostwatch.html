@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GhostLog Traffic Console</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #000000; color: #e5e7eb; }
+        .glass-card { 
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 16px;
+        }
+        .btn-ping { 
+            @apply w-full text-left p-4 text-sm font-medium transition-all duration-200 active:scale-[0.97] border border-[#1a1a1a] rounded-xl;
+            background-color: #0f0f0f;
+        }
+        .btn-ping:hover {
+            background-color: #161616;
+            border-color: #333;
+        }
+        /* Custom scrollbar for the pitch black look */
+        #console::-webkit-scrollbar { width: 6px; }
+        #console::-webkit-scrollbar-track { background: #000; }
+        #console::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
+    </style>
+</head>
+<body class="min-h-screen p-6 md:p-12 font-sans">
+    <div class="max-w-6xl mx-auto">
+        
+        <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 gap-8">
+            <div>
+                <h1 class="text-4xl font-black text-white tracking-tighter italic">GHOST<span class="text-blue-600">LOG</span></h1>
+                <p class="text-gray-600 text-xs font-bold uppercase tracking-[0.3em] mt-1">Endpoint Traffic Generator</p>
+            </div>
+            <div class="w-full lg:w-auto flex items-center gap-4 bg-[#0a0a0a] p-3 rounded-2xl border border-[#1a1a1a]">
+                <div class="pl-3">
+                    <div class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">Target Backend URL</div>
+                    <input id="baseUrl" type="text" value="https://your-backend.render.com" 
+                        class="bg-transparent border-none text-white text-sm focus:ring-0 outline-none w-72 placeholder-gray-700">
+                </div>
+                <div class="h-10 w-[1px] bg-[#1a1a1a] mx-2"></div>
+                <button onclick="ping('/api/health', 'GET')" class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black px-4 py-2 rounded-lg transition-colors">TEST LINK</button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <div class="glass-card p-6">
+                <h3 class="text-blue-600 text-[10px] font-black uppercase mb-6 tracking-[0.2em]">01. Auth / Security</h3>
+                <div class="space-y-3">
+                    <button onclick="ping('/api/auth/login', 'POST', {user:'dev_test', pass:'123'})" class="btn-ping">
+                        <span class="text-white">POST /login</span>
+                    </button>
+                    <button onclick="ping('/api/auth/register', 'POST')" class="btn-ping text-white">POST /register</button>
+                    <button onclick="ping('/api/auth/logout', 'POST')" class="btn-ping text-white">POST /logout</button>
+                </div>
+            </div>
+
+            <div class="glass-card p-6">
+                <h3 class="text-purple-600 text-[10px] font-black uppercase mb-6 tracking-[0.2em]">02. Data Management</h3>
+                <div class="space-y-3">
+                    <button onclick="ping('/api/users', 'GET')" class="btn-ping text-white">GET /users</button>
+                    <button onclick="ping('/api/products', 'GET')" class="btn-ping text-white">GET /products</button>
+                    <button onclick="ping('/api/search?q=test', 'GET')" class="btn-ping text-white">GET /search</button>
+                </div>
+            </div>
+
+            <div class="glass-card p-6">
+                <h3 class="text-red-700 text-[10px] font-black uppercase mb-6 tracking-[0.2em]">03. Error Simulation</h3>
+                <div class="space-y-3">
+                    <button onclick="ping('/api/error/500', 'GET')" class="btn-ping text-red-500 border-red-900/20 bg-red-950/10">GET /error/500</button>
+                    <button onclick="ping('/api/error/503', 'GET')" class="btn-ping text-red-500 border-red-900/20 bg-red-950/10">GET /error/503</button>
+                    <button onclick="ping('/api/users/999', 'GET')" class="btn-ping text-yellow-600 border-yellow-900/20">GET /users/404</button>
+                </div>
+            </div>
+
+            <div class="md:col-span-2 glass-card p-6 flex flex-col md:flex-row justify-between items-center gap-6 border-blue-900/20">
+                <div>
+                    <h3 class="text-white font-bold text-lg">Automated Stress Sequence</h3>
+                    <p class="text-gray-600 text-xs">Fires 10 randomized API calls to test dashboard refresh speed.</p>
+                </div>
+                <button onclick="stressTest()" class="bg-white text-black font-black text-xs px-8 py-4 rounded-xl hover:bg-gray-200 transition-all active:scale-95 uppercase tracking-widest">
+                    Execute Fire Sequence
+                </button>
+            </div>
+
+            <div class="glass-card p-6">
+                <h3 class="text-gray-600 text-[10px] font-black uppercase mb-6 tracking-[0.2em]">04. Misc</h3>
+                <div class="space-y-3">
+                    <button onclick="ping('/api/settings', 'PUT')" class="btn-ping text-white">PUT /settings</button>
+                    <button onclick="ping('/api/upload', 'POST')" class="btn-ping text-white">POST /upload</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-12 bg-black border border-[#111] rounded-2xl overflow-hidden shadow-2xl">
+            <div class="flex justify-between items-center bg-[#080808] px-6 py-3 border-b border-[#111]">
+                <span class="text-[10px] font-black text-gray-500 uppercase tracking-widest">Live Activity Log</span>
+                <button onclick="document.getElementById('console').innerHTML = ''" class="text-[10px] text-gray-700 hover:text-red-500 font-bold uppercase transition-colors">Wipe Console</button>
+            </div>
+            <div id="console" class="p-6 h-64 overflow-y-auto font-mono text-xs leading-relaxed">
+                <div class="text-gray-800 tracking-tighter">TERMINAL READY // STANDING BY FOR URL UPLOAD...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const consoleDiv = document.getElementById('console');
+
+        function log(msg, status = null) {
+            const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            let statusColor = 'text-blue-600';
+            if(status >= 400) statusColor = 'text-red-600';
+            if(status >= 200 && status < 300) statusColor = 'text-green-600';
+            
+            consoleDiv.innerHTML += `
+                <div class="mb-2 flex gap-4">
+                    <span class="text-[#222] shrink-0">${time}</span>
+                    <span class="${statusColor} font-bold italic tracking-tight uppercase">${msg}</span>
+                </div>`;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        async function ping(path, method, body = null) {
+            const baseUrl = document.getElementById('baseUrl').value;
+            // Ensure no double slashes
+            const cleanUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+            const fullUrl = `${cleanUrl}${path}`;
+            
+            try {
+                const options = { method, headers: { 'Content-Type': 'application/json' } };
+                if (body) options.body = JSON.stringify(body);
+
+                const start = performance.now();
+                const response = await fetch(fullUrl, options);
+                const duration = Math.round(performance.now() - start);
+
+                log(`-> [${method}] ${path} // HTTP_${response.status} // ${duration}ms`, response.status);
+            } catch (err) {
+                log(`!! NETWORK_EXCEPTION: CANNOT REACH ${path}`, 500);
+            }
+        }
+
+        function stressTest() {
+            const endpoints = [
+                {p: '/api/health', m: 'GET'},
+                {p: '/api/users', m: 'GET'},
+                {p: '/api/auth/login', m: 'POST'},
+                {p: '/api/error/500', m: 'GET'},
+                {p: '/api/products', m: 'GET'}
+            ];
+            log("--- INITIATING AUTOMATED TRAFFIC SEQUENCE ---");
+            for(let i=0; i<10; i++) {
+                const rand = endpoints[Math.floor(Math.random() * endpoints.length)];
+                setTimeout(() => ping(rand.p, rand.m), i * 150);
+            }
+        }
+    </script>
+</body>
+</html>
