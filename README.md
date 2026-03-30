@@ -1,4 +1,4 @@
-# Ghost-log-
+# Log Watch
 
 
 A real-time API observability tool with a zero-trace architecture.
