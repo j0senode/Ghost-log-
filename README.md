@@ -5,9 +5,9 @@ A real-time API observability tool with a zero-trace architecture.
 
 Most monitoring tools store your request data — IPs, payloads, auth headers — on a third-party server. GhostLog doesn't. The server never writes a log to disk or a database. Once a request is broadcast over WebSocket, it's gone from memory. All history lives in the browser.
 
-Ghost Watch Image
+Log Watch Ping Test Image
 <img width="1600" height="688" alt="image" src="https://github.com/user-attachments/assets/27ed8dc0-93f5-4c5d-ac3b-bd0f8170a334" />
-Log Watch Image
+Log Watch Dashboard Image
 <img width="1600" height="706" alt="image" src="https://github.com/user-attachments/assets/a44e4614-d5bf-40e2-81bf-170e8e10a872" />
 
 
